@@ -445,6 +445,7 @@
 
 <script>
   const participants = new Set();
+  let isRunning = false;
 
   function enterChannel() {
     const input = document.getElementById('channel-input');
@@ -461,8 +462,23 @@
     iframe.onload = () => { document.getElementById('chat-loading').style.display = 'none'; };
 
     document.getElementById('modal-overlay').style.display = 'none';
+    resetGiveaway();
+  }
+
+  function resetGiveaway() {
     participants.clear();
+    isRunning = false;
     updateStats();
+    document.querySelector('.btn-start').textContent = '⏱ Запустить розыгрыш';
+  }
+
+  function startGiveaway() {
+    isRunning = !isRunning;
+    if (isRunning) {
+      document.querySelector('.btn-start').textContent = '⏹ Остановить розыгрыш';
+    } else {
+      document.querySelector('.btn-start').textContent = '⏱ Запустить розыгрыш';
+    }
   }
 
   function updateStats() {
@@ -473,7 +489,11 @@
     if (e.key === 'Enter') enterChannel();
   });
 
+  document.querySelector('.btn-start').addEventListener('click', startGiveaway);
+  document.querySelector('.btn-reconnect').addEventListener('click', resetGiveaway);
+
   window.addParticipant = function(username) {
+    if (!isRunning) return;
     const keyword = document.getElementById('keyword-input').value.trim();
     if (keyword && username && !participants.has(username)) {
       participants.add(username);
