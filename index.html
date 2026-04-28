@@ -309,9 +309,59 @@
   @keyframes spin { to { transform: rotate(360deg); } }
   .loading-text { font-size: .82rem; color: var(--text3); font-weight: 800; }
 
-  ::-webkit-scrollbar { width: 5px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  /* ─── RESULT MODAL ─── */
+  #result-modal {
+    position: fixed; inset: 0; z-index: 1000;
+    background: rgba(0,0,0,0.88);
+    display: none; align-items: center; justify-content: center;
+    backdrop-filter: blur(8px);
+  }
+  #result-modal.active { display: flex; }
+  .result-box {
+    background: linear-gradient(135deg, var(--bg3), var(--bg2));
+    border: 2px solid rgba(145,71,255,0.6);
+    border-radius: 20px; padding: 50px 40px; text-align: center;
+    box-shadow: 0 0 80px rgba(145,71,255,0.4), 0 24px 60px rgba(0,0,0,0.8);
+    animation: popIn .5s cubic-bezier(.34,1.56,.64,1);
+    position: relative; overflow: hidden; min-width: 400px;
+  }
+  .result-box::before {
+    content: ''; position: absolute; top: -100px; left: -100px;
+    width: 300px; height: 300px;
+    background: radial-gradient(circle, rgba(145,71,255,0.3) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .result-title { 
+    font-size: 1.3rem; font-weight: 900; margin-bottom: 20px;
+    background: linear-gradient(90deg, var(--purple-light), var(--teal));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    text-transform: uppercase;
+  }
+  .winner-name {
+    font-size: 3rem; font-weight: 900; color: var(--orange);
+    text-shadow: 0 0 30px rgba(255,159,28,0.6);
+    margin: 20px 0; word-break: break-all;
+  }
+  .result-buttons {
+    display: flex; gap: 12px; margin-top: 30px; justify-content: center;
+  }
+  .btn-reroll {
+    padding: 14px 28px;
+    background: linear-gradient(135deg, var(--orange), var(--yellow));
+    border: none; border-radius: 10px; color: #000;
+    font-family: inherit; font-size: 1rem; font-weight: 900;
+    cursor: pointer; transition: transform .2s, box-shadow .2s;
+    box-shadow: 0 4px 20px rgba(255,159,28,0.5);
+  }
+  .btn-reroll:hover { transform: scale(1.05); box-shadow: 0 6px 30px rgba(255,159,28,0.7); }
+  .btn-close-result {
+    padding: 14px 28px;
+    background: var(--bg4); border: 1px solid var(--border);
+    border-radius: 10px; color: var(--text2);
+    font-family: inherit; font-size: 1rem; font-weight: 900;
+    cursor: pointer; transition: border-color .2s;
+  }
+  .btn-close-result:hover { border-color: var(--red); color: var(--red); }
 </style>
 </head>
 <body>
@@ -329,6 +379,18 @@
     <p>Чат Twitch будет загружен для указанного канала</p>
     <input type="text" id="channel-input" placeholder="Например: j0sk1y" />
     <button onclick="enterChannel()">Войти</button>
+  </div>
+</div>
+
+<!-- RESULT MODAL -->
+<div id="result-modal">
+  <div class="result-box">
+    <div class="result-title">🏆 Победитель!</div>
+    <div class="winner-name" id="winner-name">Loading...</div>
+    <div class="result-buttons">
+      <button class="btn-reroll" onclick="rerollWinner()">🔄 Рерол</button>
+      <button class="btn-close-result" onclick="closeResult()">Закрыть</button>
+    </div>
   </div>
 </div>
 
@@ -446,6 +508,7 @@
 <script>
   const participants = new Set();
   let isRunning = false;
+  let currentWinner = null;
 
   function enterChannel() {
     const input = document.getElementById('channel-input');
@@ -468,16 +531,51 @@
   function resetGiveaway() {
     participants.clear();
     isRunning = false;
+    currentWinner = null;
     updateStats();
     document.querySelector('.btn-start').textContent = '⏱ Запустить розыгрыш';
+    closeResult();
+  }
+
+  function selectRandomWinner() {
+    if (participants.size === 0) {
+      alert('Нет участников для выбора победителя!');
+      return null;
+    }
+    const arr = Array.from(participants);
+    const winner = arr[Math.floor(Math.random() * arr.length)];
+    return winner;
+  }
+
+  function showResult(winner) {
+    currentWinner = winner;
+    document.getElementById('winner-name').textContent = winner;
+    document.getElementById('result-modal').classList.add('active');
+  }
+
+  function rerollWinner() {
+    const winner = selectRandomWinner();
+    if (winner) {
+      showResult(winner);
+    }
+  }
+
+  function closeResult() {
+    document.getElementById('result-modal').classList.remove('active');
   }
 
   function startGiveaway() {
-    isRunning = !isRunning;
-    if (isRunning) {
-      document.querySelector('.btn-start').textContent = '⏹ Остановить розыгрыш';
+    if (!isRunning) {
+      isRunning = true;
+      document.querySelector('.btn-start').textContent = '🎲 Выбрать победителя';
     } else {
-      document.querySelector('.btn-start').textContent = '⏱ Запустить розыгрыш';
+      // Show result when giveaway is stopped
+      const winner = selectRandomWinner();
+      if (winner) {
+        showResult(winner);
+        isRunning = false;
+        document.querySelector('.btn-start').textContent = '⏱ Запустить розыгрыш';
+      }
     }
   }
 
