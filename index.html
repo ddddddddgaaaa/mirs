@@ -505,15 +505,20 @@
 
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/tmi.js@1.8.5/lib/tmi.min.js"></script>
 <script>
   const participants = new Set();
   let isRunning = false;
   let currentWinner = null;
+  let chatClient = null;
+  let currentChannel = null;
 
   function enterChannel() {
     const input = document.getElementById('channel-input');
-    const ch = input.value.trim();
+    const ch = input.value.trim().toLowerCase();
     if (!ch) { input.focus(); return; }
+
+    currentChannel = ch;
 
     document.getElementById('header-channel').textContent = ch;
     document.getElementById('left-channel').textContent = ch;
@@ -526,6 +531,46 @@
 
     document.getElementById('modal-overlay').style.display = 'none';
     resetGiveaway();
+    
+    // Connect to Twitch chat (requires anonymous connection or OAuth token)
+    connectToTwitchChat(ch);
+  }
+
+  function connectToTwitchChat(channel) {
+    // Using anonymous connection - works for public channels
+    if (chatClient) {
+      chatClient.disconnect();
+    }
+    
+    chatClient = new TMI.client({
+      connection: {
+        reconnect: true,
+        secure: true
+      },
+      channels: [channel]
+    });
+
+    chatClient.connect().catch(err => {
+      console.log('TMI connection info:', err);
+      // Fall back to manual testing if can't connect
+    });
+
+    chatClient.on('message', (channel, userstate, message, self) => {
+      if (self) return; // Ignore bot's own messages
+      if (!isRunning) return;
+
+      const keyword = document.getElementById('keyword-input').value.trim();
+      if (keyword && message.includes(keyword)) {
+        addParticipantFromChat(userstate['display-name'] || userstate.username);
+      }
+    });
+  }
+
+  function addParticipantFromChat(username) {
+    if (username && !participants.has(username)) {
+      participants.add(username);
+      updateStats();
+    }
   }
 
   function resetGiveaway() {
@@ -590,6 +635,7 @@
   document.querySelector('.btn-start').addEventListener('click', startGiveaway);
   document.querySelector('.btn-reconnect').addEventListener('click', resetGiveaway);
 
+  // Manual testing function (for when chat connection isn't available)
   window.addParticipant = function(username) {
     if (!isRunning) return;
     const keyword = document.getElementById('keyword-input').value.trim();
@@ -598,6 +644,16 @@
       updateStats();
     }
   };
+
+  // Keyboard shortcut for testing: press Ctrl+T to add a test participant
+  document.addEventListener('keydown', e => {
+    if (e.ctrlKey && e.key === 't') {
+      const testName = prompt('Введите ник для тестирования:');
+      if (testName) {
+        addParticipantFromChat(testName);
+      }
+    }
+  });
 </script>
 </body>
 </html>
